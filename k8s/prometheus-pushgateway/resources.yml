@@ -1,0 +1,20 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: prometheus-pushgateway
+  name: prometheus-pushgateway
+  namespace: ikigai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-pushgateway
+  template:
+    metadata:
+      labels:
+        app: prometheus-pushgateway
+    spec:
+      containers:
+      - image: prom/pushgateway:v0.5.0
+        name: pushgateway
