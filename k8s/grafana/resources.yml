@@ -1,0 +1,59 @@
+---
+apiVersion: "extensions/v1beta1"
+kind: "Deployment"
+metadata:
+  name: "grafana"
+  namespace: "ikigai"
+  labels:
+    app: "grafana"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "grafana"
+  template:
+    metadata:
+      labels:
+        app: "grafana"
+    spec:
+      securityContext:
+        fsGroup: 2000
+        runAsUser: 1000
+        runAsNonRoot: true
+      containers:
+      - name: "grafana"
+        image: "grafana/grafana:5.1.3"
+        env:
+        - name: GF_INSTALL_PLUGINS
+          valueFrom:
+            configMapKeyRef:
+              name: grafana-config
+              key: install-plugins
+        volumeMounts:
+            - name: data
+              mountPath: /var/lib/grafana
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: grafana-volumeclaim
+---
+apiVersion: v1
+data:
+  install-plugins: grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: grafana-config
+  namespace: ikigai
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-volumeclaim
+  namespace: "ikigai"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

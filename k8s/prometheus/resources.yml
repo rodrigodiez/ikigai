@@ -1,0 +1,86 @@
+---
+apiVersion: "extensions/v1beta1"
+kind: "Deployment"
+metadata:
+  name: "prometheus"
+  namespace: "ikigai"
+  labels:
+    app: "prometheus"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: "prometheus"
+  template:
+    metadata:
+      labels:
+        app: "prometheus"
+    spec:
+      securityContext:
+        fsGroup: 2000
+        runAsUser: 1000
+        runAsNonRoot: true
+      containers:
+      - name: "prometheus"
+        image: "prom/prometheus:v2.2.1"
+        volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+            - name: data
+              mountPath: /prometheus
+      volumes:
+      - name: config
+        configMap:
+          name: prometheus-config
+          items:
+            - key: prometheus.yml
+              path: prometheus.yml
+
+      - name: data
+        persistentVolumeClaim:
+          claimName: prometheus-volumeclaim
+---
+apiVersion: v1
+data:
+  prometheus.yml: |-
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 10s
+      evaluation_interval: 15s
+    alerting:
+      alertmanagers:
+      - static_configs:
+        - targets: []
+        scheme: http
+        timeout: 10s
+    scrape_configs:
+    - job_name: prometheus
+      scrape_interval: 15s
+      scrape_timeout: 10s
+      metrics_path: /metrics
+      scheme: http
+      static_configs:
+      - targets:
+        - prometheus-service:9090
+    - job_name: 'pushgateway'
+      honor_labels: true
+      static_configs:
+      - targets:
+        - 'prometheus-pushgateway-service:9091'
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: prometheus-config
+  namespace: ikigai
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-volumeclaim
+  namespace: "ikigai"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
