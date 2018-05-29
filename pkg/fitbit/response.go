@@ -20,3 +20,11 @@ type DailyActivitySummaryGoals struct {
 	CaloriesOut int `json:"caloriesOut"`
 	Steps       int `json:"steps"`
 }
+
+type UserProfileResponse struct {
+	User UserProfile `json:"user"`
+}
+
+type UserProfile struct {
+	Weight float64 `json:"weight"`
+}

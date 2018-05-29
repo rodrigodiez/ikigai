@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: "ikigai"
-        image: "rodrigodiez/ikigai:0.1.5"
+        image: "rodrigodiez/ikigai:0.1.7"
         env:
           - name: IKIGAI_FITBIT_OAUTH2_CLIENT_ID
             valueFrom:

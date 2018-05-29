@@ -41,7 +41,7 @@ func main() {
 	log.Printf("Pushing metrics every %s to http://%s:%d...\n", cfg.Interval, cfg.GatewayHost, cfg.GatewayPort)
 
 	for range ticker.C {
-		response, err := client.GetDailyActivitySummary()
+		activityResponse, err := client.GetDailyActivitySummary()
 
 		if err != nil {
 			log.Printf("GetActivitySummary::ERROR::%s\n", err)
@@ -49,7 +49,7 @@ func main() {
 		}
 
 		if cfg.Debug {
-			log.Printf("%+v", response)
+			log.Printf("%+v", activityResponse)
 		}
 
 		registry := prometheus.NewRegistry()
@@ -58,63 +58,80 @@ func main() {
 			Name: "fitbit_calories_total",
 			Help: "Total number of calories",
 		})
-		totalCalories.Set(float64(response.Summary.CaloriesOut))
+		totalCalories.Set(float64(activityResponse.Summary.CaloriesOut))
 
 		activeCalories := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "fitbit_calories_active_total",
 			Help: "Number of calories above BMR",
 		})
-		activeCalories.Set(float64(response.Summary.ActivityCalories))
+		activeCalories.Set(float64(activityResponse.Summary.ActivityCalories))
 
 		bmrCalories := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "fitbit_calories_bmr_total",
 			Help: "Number of BMR calories",
 		})
-		bmrCalories.Set(float64(response.Summary.CaloriesBMR))
+		bmrCalories.Set(float64(activityResponse.Summary.CaloriesBMR))
 
 		lowActiveMinutes := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "fitbit_minutes_low_activity_total",
 			Help: "Number of minutes expent in low activity",
 		})
-		lowActiveMinutes.Set(float64(response.Summary.FairlyActiveMinutes))
+		lowActiveMinutes.Set(float64(activityResponse.Summary.FairlyActiveMinutes))
 
 		mediumActiveMinutes := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "fitbit_minutes_medium_activity_total",
 			Help: "Number of minutes expent in medium activity",
 		})
-		mediumActiveMinutes.Set(float64(response.Summary.LightlyActiveMinutes))
+		mediumActiveMinutes.Set(float64(activityResponse.Summary.LightlyActiveMinutes))
 
 		highActiveMinutes := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "fitbit_minutes_high_activity_total",
 			Help: "Number of minutes expent in high activity",
 		})
-		highActiveMinutes.Set(float64(response.Summary.VeryActiveMinutes))
+		highActiveMinutes.Set(float64(activityResponse.Summary.VeryActiveMinutes))
 
 		sedentaryMinutes := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "fitbit_minutes_sedentary_total",
 			Help: "Number of sedentary minutes expent",
 		})
-		sedentaryMinutes.Set(float64(response.Summary.SedentaryMinutes))
+		sedentaryMinutes.Set(float64(activityResponse.Summary.SedentaryMinutes))
 
 		totalSteps := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "fitbit_steps_total",
 			Help: "Number of steps",
 		})
-		totalSteps.Set(float64(response.Summary.Steps))
+		totalSteps.Set(float64(activityResponse.Summary.Steps))
 
 		goalSteps := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "fitbit_steps_goal",
 			Help: "Steps goal",
 		})
-		goalSteps.Set(float64(response.Goals.Steps))
+		goalSteps.Set(float64(activityResponse.Goals.Steps))
 
 		goalCalories := prometheus.NewCounter(prometheus.CounterOpts{
 			Name: "fitbit_calories_goal",
 			Help: "Calories goal",
 		})
-		goalCalories.Set(float64(response.Goals.CaloriesOut))
+		goalCalories.Set(float64(activityResponse.Goals.CaloriesOut))
 
-		registry.MustRegister(totalCalories, activeCalories, bmrCalories, lowActiveMinutes, mediumActiveMinutes, highActiveMinutes, sedentaryMinutes, totalSteps, goalSteps, goalCalories)
+		userResponse, err := client.GetUserProfile()
+
+		if err != nil {
+			log.Printf("GetUserProfile::ERROR::%s\n", err)
+			continue
+		}
+
+		if cfg.Debug {
+			log.Printf("%+v", userResponse)
+		}
+
+		weight := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "fitbit_weight_total",
+			Help: "User weight",
+		})
+		weight.Set(userResponse.User.Weight)
+
+		registry.MustRegister(totalCalories, activeCalories, bmrCalories, lowActiveMinutes, mediumActiveMinutes, highActiveMinutes, sedentaryMinutes, totalSteps, goalSteps, goalCalories, weight)
 
 		if err := push.FromGatherer("fitbit_api", nil, fmt.Sprintf("http://%s:%d", cfg.GatewayHost, cfg.GatewayPort), registry); err != nil {
 			log.Printf("PushMetrics::ERROR::%s\n", err)
