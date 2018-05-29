@@ -31,3 +31,7 @@
 [[constraint]]
   name = "github.com/prometheus/client_golang"
   version = "0.8.0"
+
+[[constraint]]
+  name = "github.com/caarlos0/env"
+  version = "3.3.0"

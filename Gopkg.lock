@@ -8,6 +8,12 @@
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
 
 [[projects]]
+  name = "github.com/caarlos0/env"
+  packages = ["."]
+  revision = "1cddc31c48c56ecd700d873edb9fd5b6f5df922a"
+  version = "v3.3.0"
+
+[[projects]]
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
@@ -53,7 +59,7 @@
     "nfs",
     "xfs"
   ]
-  revision = "8b1c2da0d56deffdbb9e48d4414b4e674bd8083e"
+  revision = "fe93d378a6b03758a2c1b65e86cf630bf78681c0"
 
 [[projects]]
   branch = "master"
@@ -72,7 +78,7 @@
     "fitbit",
     "internal"
   ]
-  revision = "770e5ebd4ab27c4d70b0983674d138217f5e2c72"
+  revision = "8373c646843f3728aafb0d706e6edb223532ae73"
 
 [[projects]]
   name = "google.golang.org/appengine"
@@ -91,6 +97,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b3ea447fc4fe5e617342234444f9ca4e75dfa3d3ae042f783432dc8fb5601dfb"
+  inputs-digest = "a677fd0b2ea3deed9e029c8c35ac6bc29375dbf1da2a6eee600aedccb0269796"
   solver-name = "gps-cdcl"
   solver-version = 1

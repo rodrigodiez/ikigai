@@ -3,61 +3,42 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"strconv"
 	"time"
 
+	"github.com/caarlos0/env"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/push"
 	"github.com/rodrigodiez/ikigai/pkg/fitbit"
 )
 
+type config struct {
+	GatewayHost       string        `env:"IKIGAI_PROMETHEUS_PUSHGATEWAY_HOST,required"`
+	ClientID          string        `env:"IKIGAI_FITBIT_OAUTH2_CLIENT_ID,required"`
+	ClientSecret      string        `env:"IKIGAI_FITBIT_OAUTH2_CLIENT_SECRET,required"`
+	AuthorizationCode string        `env:"IKIGAI_FITBIT_OAUTH2_AUTHORIZATION_CODE,required"`
+	RedirectURL       string        `env:"IKIGAI_FITBIT_OAUTH2_REDIRECT_URL,required"`
+	GatewayPort       int           `env:"IKIGAI_PROMETHEUS_PUSHGATEWAY_PORT" envDefault:"9091"`
+	Interval          time.Duration `env:"IKIGAI_INTERVAL_DURATION" envDefault:"60s"`
+	Debug             bool          `env:"IKIGAI_DEBUG" envDefault:"false"`
+}
+
 func main() {
-	var (
-		gatewayHost       string
-		gatewayPort       int
-		interval          time.Duration
-		clientID          string
-		clientSecret      string
-		authorizationCode string
-		redirectURL       string
-		err               error
-	)
-
-	gatewayHost = os.Getenv("IKIGAI_PROMETHEUS_PUSHGATEWAY_HOST")
-	clientID = os.Getenv("IKIGAI_FITBIT_OAUTH2_CLIENT_ID")
-	clientSecret = os.Getenv("IKIGAI_FITBIT_OAUTH2_CLIENT_SECRET")
-	authorizationCode = os.Getenv("IKIGAI_FITBIT_OAUTH2_AUTHORIZATION_CODE")
-	redirectURL = os.Getenv("IKIGAI_FITBIT_OAUTH2_REDIRECT_URL")
-
-	gatewayPort, err = strconv.Atoi(os.Getenv("IKIGAI_PROMETHEUS_PUSHGATEWAY_PORT"))
-	if err != nil {
-		log.Println("Can't parse IKIGAI_PROMETHEUS_PUSHGATEWAY_PORT to int: ", err)
-		printUsage()
-		os.Exit(1)
-	}
-
-	interval, err = time.ParseDuration(os.Getenv("IKIGAI_INTERVAL_DURATION"))
-	if err != nil {
-		log.Println("Can't parse IKIGAI_INTERVAL_DURATION to time.Duration: ", err)
-		printUsage()
-		os.Exit(1)
-	}
-
-	if gatewayHost == "" || clientID == "" || clientSecret == "" || authorizationCode == "" || redirectURL == "" {
-		printUsage()
-		os.Exit(1)
-	}
-
-	client, err := fitbit.NewClient(clientID, clientSecret, redirectURL, authorizationCode)
+	cfg := config{}
+	err := env.Parse(&cfg)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	ticker := time.NewTicker(interval)
+	client, err := fitbit.NewClient(cfg.ClientID, cfg.ClientSecret, cfg.RedirectURL, cfg.AuthorizationCode)
 
-	log.Printf("Pushing metrics every %s to http://%s:%d...\n", interval, gatewayHost, gatewayPort)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ticker := time.NewTicker(cfg.Interval)
+
+	log.Printf("Pushing metrics every %s to http://%s:%d...\n", cfg.Interval, cfg.GatewayHost, cfg.GatewayPort)
 
 	for range ticker.C {
 		response, err := client.GetDailyActivitySummary()
@@ -65,6 +46,10 @@ func main() {
 		if err != nil {
 			log.Printf("GetActivitySummary::ERROR::%s\n", err)
 			continue
+		}
+
+		if cfg.Debug {
+			log.Printf("%+v", response)
 		}
 
 		registry := prometheus.NewRegistry()
@@ -111,9 +96,27 @@ func main() {
 		})
 		sedentaryMinutes.Set(float64(response.Summary.SedentaryMinutes))
 
-		registry.MustRegister(totalCalories, activeCalories, bmrCalories, lowActiveMinutes, mediumActiveMinutes, highActiveMinutes, sedentaryMinutes)
+		totalSteps := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "fitbit_steps_total",
+			Help: "Number of steps",
+		})
+		totalSteps.Set(float64(response.Summary.Steps))
 
-		if err := push.FromGatherer("fitbit_api", nil, fmt.Sprintf("http://%s:%d", gatewayHost, gatewayPort), registry); err != nil {
+		goalSteps := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "fitbit_steps_goal",
+			Help: "Steps goal",
+		})
+		goalSteps.Set(float64(response.Goals.Steps))
+
+		goalCalories := prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "fitbit_calories_goal",
+			Help: "Calories goal",
+		})
+		goalCalories.Set(float64(response.Goals.CaloriesOut))
+
+		registry.MustRegister(totalCalories, activeCalories, bmrCalories, lowActiveMinutes, mediumActiveMinutes, highActiveMinutes, sedentaryMinutes, totalSteps, goalSteps, goalCalories)
+
+		if err := push.FromGatherer("fitbit_api", nil, fmt.Sprintf("http://%s:%d", cfg.GatewayHost, cfg.GatewayPort), registry); err != nil {
 			log.Printf("PushMetrics::ERROR::%s\n", err)
 			continue
 		}

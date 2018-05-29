@@ -2,6 +2,7 @@ package fitbit
 
 type DailyActivitySummaryResponse struct {
 	Summary DailyActivitySummarySummary `json:"summary"`
+	Goals   DailyActivitySummaryGoals   `json:"goals"`
 }
 
 type DailyActivitySummarySummary struct {
@@ -12,4 +13,10 @@ type DailyActivitySummarySummary struct {
 	LightlyActiveMinutes int `json:"lightlyActiveMinutes"`
 	VeryActiveMinutes    int `json:"veryActiveMinutes"`
 	SedentaryMinutes     int `json:"sedentaryMinutes"`
+	Steps                int `json:"steps"`
+}
+
+type DailyActivitySummaryGoals struct {
+	CaloriesOut int `json:"caloriesOut"`
+	Steps       int `json:"steps"`
 }
